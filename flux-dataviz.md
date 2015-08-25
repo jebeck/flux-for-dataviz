@@ -115,7 +115,7 @@ D3 is the JavaScript library that anchors the most commonly used toolset for int
 <a class="image-source white-link" target="_blank" href="https://www.flickr.com/photos/dominik99/384027019/in/faves-134718242@N08/">(image source)</a>
 
 Note:
-What do I mean by significantly complex? Well, the thing that leapt out at me when I was first learning about React and Flux by watching some of the videos from the Facebook team was the story of the zombie spurious unread message counter bug, always rising again from the dead, and the key point that I got out of this example was that what made debugging the situation so impossible in the pre-Flux days was the fact that many different places in the Facebook UI both displayed and had the power to manipulate the unread message count. So I've really latched onto this as my threshold for when a project or application is getting complex enough to think about employing the Flux pattern: if the same information is being displayed and potentially changed in mutltiple places in the UI, *that's* my definition of complex.
+For me, the definition of complex is when the same information - the same data - is being displayed and potentially changed in multiple places in the UI.
 
 
 <!-- .slide: data-background-video-loop data-background-video="video/stats-widget.webm" -->
@@ -445,7 +445,7 @@ So the problem in short is: too much encapsulation, too much implicit state.
 <!-- .slide: data-background="images/dominoes.gif" -->
 
 Note:
-Since my problem is too much hidden state, the Flux pattern seems to be a natural fit, with its emphasis on global state managed by stores at the highest level of the application and information trickling down from the top to the components that need it to render.
+Since my problem is too much hidden state, the Flux pattern seems to be a natural fit, with its emphasis on state managed by stores at the highest level of the application and information trickling down from the top to the components that need it to render.
 
 
 ## let's talk about <!-- .element: class="photo-overlay-dark white-shadow" -->
@@ -519,7 +519,7 @@ Or if you're a skiier like me and you're interested in the weather for the Cotto
 - user preference <!-- .element: class="fragment" -->
 
 Note:
-Time is another view determinator. When viewing past weather data, predicted high and low temperatures and predictions of precipitation are probably not as relevant as the actual high and low temps and precipitation. In a forecast view, on the other hand, the actual data obviously doesn't exist yet, and the predictions are highly relevant.
+Time is another view determinator. When viewing past weather data, predicted high and low temperatures are probably not as relevant as the actual high and low temps. In a forecast view, on the other hand, the actual data obviously doesn't exist yet, and the predictions are highly relevant.
 
 User preference also comes into play. A new weather app I've been using lately has a preference to always display the "feels like" temperature instead of the raw temperature, for example.
 
@@ -654,7 +654,7 @@ Note:
 The DrawStore is where the information from the ConfigStore and the DataStore intersects. It stores the user's location along the timeline as well as the data in view at that location and the datum or data (if any) that the user is currently focusing on through some kind of interaction.
 
 
-## Draw(Store) example
+## DrawStore example
 
 ```JavaScript
 {
@@ -676,7 +676,7 @@ The DrawStore is where the information from the ConfigStore and the DataStore in
 <!-- .slide: data-background="#d9d2e9" -->
 
 Note:
-You can see in this example how the DrawStore plucks what's relevant from the ConfigStore - only the enabled render module for high temperature - and augments it, adding the array of data that will actually be passed to the render module. (This array is not all the data, but a subset after filtering down to the time domain that the user has navigated to.)
+You can see in this example how the DrawStore plucks what's relevant from the ConfigStore - only the enabled render module for high temperature - and augments it, adding the array of data that will actually be passed to the render module. (This array is not all the data, but a subset after filtering down to the current location, which here is a span of ten days - you could think of this as the DrawStore for a 10-day weather forecast view.)
 
 
 # Why not just
@@ -722,7 +722,7 @@ Finally, only the DrawStore responds the move location action, which is fired as
 <img src="images/basic-flow.svg" alt="diagram of basic flow between the three stores" title="basic flow diagram" style="border: none; box-shadow: none;" width="90%" />
 
 Note:
-And finally, here's a somewhat crude attempt at illustrating this in a diagram. I've put `INIT_CONFIGS` and `LOAD_DATA` on one side because both of these actions will be fired after the server responds to a request for data, and they may happen in either order. I've drawn a dotted line from the DrawStore to `INIT_CONFIGS` and `LOAD_DATA` to represent the fact that the DrawStore also responds to these dispatches after waiting for the other stores to finish their responses. The DrawStore is the source of the data used to actually render the visualization for the user. The user then interacts with it, navigating through the time dimension and causing `MOVE_LOCATION` actions to be fired as she goes. These are then dispatched straight to the DrawStore, which prepares the next state of the visualization for rendering.
+And here's a somewhat hand-wavey attempt at illustrating this in a diagram. I've put `INIT_CONFIGS` and `LOAD_DATA` on one side because both of these actions will be fired after the server responds to a request for data, and they may happen in either order. I've drawn a dotted line from the DrawStore to `INIT_CONFIGS` and `LOAD_DATA` to represent the fact that the DrawStore also responds to these dispatches after waiting for the other stores to finish their responses. The DrawStore is the source of the data used to actually render the visualization for the user. The user then interacts with it, navigating through the time dimension and causing `MOVE_LOCATION` actions to be fired as she goes. These are then dispatched straight to the DrawStore, which prepares the next state of the visualization for rendering.
 
 
 <img src="images/basic-flow-focus.svg" alt="diagram of flow between the three stores: focus data" title="flow diagram: focus data" style="border: none; box-shadow: none;" width="90%" />
