@@ -26,7 +26,7 @@ I'm jebeck on GitHub and in most other places, including the Reactiflux Slack. F
 <!-- .slide: data-background="images/lancets.jpg" -->
 
 Note:
-And here's a link to where these slides are hosted on the web, in case you want to follow along.
+And here's a link to where these slides are hosted on the web, in case you want to follow along and the WiFi is cooperating.
 
 
 # WARNING <!-- .element: class="photo-overlay huge white-shadow" -->
@@ -36,6 +36,8 @@ And here's a link to where these slides are hosted on the web, in case you want 
 
 Note:
 Before we dive in, I want to be explicit about the fact that my goal here is to talk through some of the challenges and problems I've been thinking through as I think about what the next version of our data visualization library at Tidepool might look like. What that means is that everything I'm about to talk to you about is quite preliminary. We're going to be talking about thoughts and ideas and experiments that are still very much under construction and unproven.
+
+Even though these ideas *are* unproven, I hope that seeing what it looks like to think about implementing the Flux architecture for a large, complex, pre-existing real-world application will be useful.
 
 
 # tideline <!-- .element: class="photo-overlay-dark huge white-shadow" -->
@@ -48,9 +50,9 @@ Our data visualization library at Tidepool is called tideline. We use it to crea
 <!-- .slide: data-background-video-loop data-background-video="video/tideline.webm" -->
 
 Note:
-Tideline started with this one-day view - a horizontal scrolling timeline showing twenty-four hours at a time, with some summary statistics that update as you scroll along the timeline. The two-week view has also been in the app since the very beginning; it's a reverse-chronological vertical scrolling summary of a subset of the data. The app has gotten larger and larger since, with a "trends" view showing days of data layered into a summary. From any of the summary views, double-clicking on a piece of data that's of particular interest will jump you back to the daily view for the day when that event occurred.
+Tideline started with this one-day view - a horizontal scrolling timeline showing twenty-four hours at a time, with some summary statistics that update as you scroll along the timeline. The two-week view has also been in the app since the very beginning; it's a reverse-chronological vertical scrolling summary of a subset of the data. The app has gotten larger and larger since, with a "trends" view showing days of data layered into a summary and a simple insulin pump settings view. We're about to start prototyping our next major addition to the views - a calendar-based dashboard summary view. From any of the summary views, double-clicking on a piece of data that's of particular interest will jump you back to the daily view for the day when that event occurred.
 
-The different data views here crucially *share* state - in particular the date navigation is preserved - or in some cases translated - across views. Some of the components - for example the statistics "widgets" at the bottom that update on scroll - are also common to more than one view. For these reasons, I've started thinking of this project as one "meta" data visualization with a variety of surface manifestations, rather than as a variety of separate visualizations. And what I'm going to introduce to you now is the current progress of my thinking with regards to managing the state of that "meta" visualization using the Flux architecture.
+The different data views here crucially *share* state - in particular the date navigation is preserved - or in some cases translated - across views. Some of the components - for example the statistics "widgets" at the bottom that update on scroll - are also common to more than one view. For these reasons, I've started thinking of this project as one "meta" data visualization with a variety of surface manifestations, rather than as a collection of separate visualizations. And what I'm going to talk about today is the current progress of my thinking with regards to managing the state of that "meta" visualization using the Flux architecture.
 
 
 
@@ -70,7 +72,7 @@ But first, let's talk about sandwiches. Bear with me for this little metaphorica
 <a class="image-source white-link" target="_blank" href="https://www.flickr.com/photos/davidberkowitz/6230975487/in/faves-134718242@N08/">(image source)</a>
 
 Note:
-Now this? This is another type of peanut butter sandwich - an Elvis. It's peanut butter, grilled bananas, and bacon, toasted.
+Now this? This is another type of peanut butter sandwich - an Elvis. It's peanut butter, grilled bananas, and bacon, toasted. It is, in my opinion, the world's greatest peanut butter-based sandwich.
 
 
 ## how to fry <!-- .element: class="photo-overlay white-shadow" -->
@@ -88,9 +90,9 @@ As a diner in a restaurant, if you want an Elvis instead of a PB & J, do you hav
 <img width="850" src="images/none-pizza.jpg" alt="'None pizza with left beef'">
 
 Note:
-We have interfaces *so good*, in fact, that you can order a "none pizza with left beef" and get your order filled successfully, without having to explain any procedure at all.
+We have interfaces *so good*, in fact, that you can order a "none pizza with left beef" and get your order filled successfully, without having to explain any procedure at all. Your order is just a description - or you might say a declaration - of what you want.
 
-So, you're probably asking, how is this relevant to the problem at hand, which is managing the meta-state of a complex set of data visualizations? Well, to put it a little too simply, the strategy I'm about to introduce to you is a strategy that attempts to make - on both the developer's and (at least potentially) on the user's side of things - the experience of a complex interactive data visualization more like the "none pizza with left beef" experience - exactly what you want, defined through a simple but powerful interface, leaving implementation details, including procedural details, to be defined elsewhere.
+So, you're probably asking, how is this relevant to the problem at hand, which is managing the meta-state of a complex set of data visualizations? Well, to put it a little too simply, the strategy I'm about to introduce to you is a strategy that attempts to make - on both the developer's and (at least potentially) on the user's side of things - the experience of configuring a complex interactive data visualization more like the "none pizza with left beef" experience - exactly what you want, defined through a simple but powerful interface, leaving implementation details, including procedural details, to be defined elsewhere.
 
 
 
@@ -98,7 +100,7 @@ So, you're probably asking, how is this relevant to the problem at hand, which i
 <!-- .slide: data-background="images/disaster.gif" -->
 
 Note:
-In this section, we're finally going to dig in, and I'm going to present the problem to you. First I'll do this with a tiny example, and I'll work in a small introduction to D3 along the way. Then I'll show you how the problem manifests in tideline today.
+So now let's finally really dig in, and let's start first by talking about what the problem really is. I'm going to do this with a tiny example that includes a little introduction to D3 along the way. Then I'll show you how the problem manifests in tideline today.
 
 
 <img data-src="images/D3.svg" title="D3.js logo" alt="D3.js logo" style="border: none; box-shadow: none;"/>
@@ -119,7 +121,7 @@ What do I mean by significantly complex? Well, the thing that leapt out at me wh
 <!-- .slide: data-background-video-loop data-background-video="video/stats-widget.webm" -->
 
 Note:
-We've already seen this in tideline, with the statistics "widgets" at the bottom of two of the views updating as the user navigates along the timeline. The same data is displayed in the timeline and driving the summary statistics displayed in the widgets.
+We've already seen this in tideline, with the statistics "widgets" at the bottom of two of the views that update as the user navigates along the timeline. The same data is displayed in the timeline and driving the summary statistics displayed in the widgets.
 
 
 # [<small>let's make</small> a bar chart](http://bost.ocks.org/mike/bar/)
@@ -228,11 +230,13 @@ vs.
 Note:
 The D3 version is quite a bit more declarative - we don't specify the operations in the DOM, we specify the result we want - a div added for each datum with a width 10 times the value of the datum, in pixels. The alternative - using a for loop - is by comparison quite procedural.
 
+Now, to give you a preview of what's coming next, you're about to hear me complain about how a common pattern in D3 is too procedural. But just now I said D3 is declarative. The truth is: it's both, and I don't believe the declarative versus procedural distinction is all that black-and-white, but more of a continuum.
+
 
 <!-- .slide: data-background="images/yawn.gif" -->
 
 Note:
-All right, I realize this is a very *very* simple example. So where does the complexity come in?
+I also realize this is a very *very* simple example. So where does the complexity come in?
 
 
 # + interactivity <!-- .element: class="photo-overlay-dark big white-shadow" -->
@@ -261,7 +265,7 @@ d3.select("#chart")
 ```
 
 Note:
-So bear with me on this tiny bar chart example for a bit longer, so that we can consider what happens when we add a little interactivity even in such a simple example. What if we want the value of the datum corresponding to each bar to appear in a tooltip instead of cluttering up the bar itself with a label? What we have in the code here is the most commonly recommended pattern in D3 for adding tooltips to elements of a visualization.
+So bear with me on this tiny bar chart example for a bit longer, so that we can consider what happens when we add a little interactivity even in such a simple example. What if we want the value of the datum corresponding to each bar to appear in a tooltip instead of cluttering up the bar itself with a label? What we have in the code here is the most commonly recommended pattern in D3 for adding tooltips to elements of a visualization - by binding listener functions to the 'mouseover' and 'mouseout' events. Here the 'mouseover' listener would insert the tooltip into the DOM, and the 'mouseout' would remove it.
 
 
 ["Integrating D3.js visualizations in a React app"](http://nicolashery.com/integrating-d3js-visualizations-in-a-react-app/) - Nicolas Hery
@@ -269,9 +273,27 @@ So bear with me on this tiny bar chart example for a bit longer, so that we can 
 ![hat tip](images/hat-tip.gif)
 
 Note:
-So here I have to pause and give a big hat tip to Nico Hery, a former colleague of mine, who was the first to point out this issue to me, which is that effecting DOM manipulation through the listener functions bound to the 'mouseover' and 'mouseout' events is veering back into procedural territory. The state of the visualization with respect to the user's interactions is completely hidden, encapsulated tightly within the D3 code and not exposed in a developer-friendly way (for testing, for design iteration, etc.)
+So here I have to pause and give a big hat tip to Nico Hery, a former colleague of mine, who was the first to point out this issue to me. The issue is that effecting DOM manipulation through the listener functions bound to the 'mouseover' and 'mouseout' events is veering back into procedural territory. D3 is still giving us some nice syntactic sugar; we don't have to use any of the browser's DOM manipulation functions to make the tooltip, but we are manipulating the DOM more-or-less directly in response to an event.
 
-The blog post of Nico's linked here is where he discusses this very problem and suggests the alternative of using the D3 event listeners not to *draw* the tooltips through DOM manipulation, but merely to add the datapoint currently being moused over to an array of focus objects, all of which will then be provided as the data to another (potentially) completely separate D3 module that renders the tooltips.
+
+![ew](images/ew.gif)
+
+(React dev encountering DOM manipulation in the wild)
+
+Note:
+This is a huge red flag for me.
+
+Even worse, the state of the visualization with respect to the user's interactions is completely hidden, encapsulated tightly within the D3 code and not exposed in a developer-friendly way (for testing, for design iteration, etc.)
+
+
+["Integrating D3.js visualizations in a React app"](http://nicolashery.com/integrating-d3js-visualizations-in-a-react-app/) - Nicolas Hery
+
+![hat tip](images/hat-tip.gif)
+
+Note:
+So back to my hat tip.
+
+The blog post of Nico's linked here is where he discusses this very problem and suggests the alternative of using the D3 event listeners not to *draw* the tooltips through DOM manipulation, but merely to add the datapoint currently being moused over to an array of focus objects, all of which will then be provided as the data to another (potentially) completely separate D3 module or even a React component instead that renders the tooltips.
 
 
 ## Flux tooltips
@@ -291,13 +313,17 @@ d3.select("#chart")
 ```
 
 Note:
-The idea that I'm presenting today is basically nothing more than a further logical extension of Nico's idea - I'm advocating managing all state in a complex data visualization with the Flux architecture of one-way data flow. That means making *all* aspects of the state of a visualization explicit, with nothing buried deep inside the D3 modules used for rendering. Instead of binding `mouseover` and `mouseout` events to listener functions that manipulate the DOM, I'm advocating binding them to Flux actions.
+The idea that I'm presenting today is basically nothing more than a further logical extension of Nico's idea - I'm advocating managing all state in a complex data visualization with the Flux architecture of one-way data flow. That means making *all* aspects of the state of a visualization explicit, with nothing buried deep inside the D3 modules used for rendering. Instead of binding `mouseover` and `mouseout` events to listener functions that manipulate the DOM, I'm advocating binding them to Flux action creators.
+
+The best thing about this solution is that it's totally agnostic about *how* you're going to display the focused data. So you might even be able to do something like: if you're in a browser on a laptop or desktop, you render a tooltip, but if you're on a touchscreen tablet, you render the information in a sidebar because touch-based tooltips are kind of odd and finicky on a touchscreen.
 
 
 # [<small>towards</small> reusable charts](http://bost.ocks.org/mike/chart/)
 
 Note:
-In another article, Mike Bostock builds an argument for one particular strategy for writing resuable visualization code with D3.
+So the common tooltip creation pattern is one D3 pattern that strikes me as too procedural. Unfortunately it's not the only one.
+
+In another article, Mike Bostock builds an argument for his recommendation of how to write resuable visualization code with D3.
 
 
 ## &ldquo;implement **charts**
@@ -405,11 +431,11 @@ chart.tooltips().addGroup(poolBasal, {
 ```
 
 Note:
-The problem, or at least *my* problem, is that at a high level of complexity, a getter-setter API gets really difficult to work with. Instead of ordering a pizza, I'm describing how to make it. This is a snippet from the daily view chart "factory" from the current tideline. First I make a new "pool" - a horizontal section of our daily view in tideline - then I set all these properties like the label and the legend and so forth. Then, before I do anything else, I have to arrange the pools and set up the annotation and tooltip layers. Now (but not *before* now), I can configure the tooltips.
+The problem, or at least *my* problem, is that at a high level of complexity, a getter-setter API gets really difficult to work with. This code here is a snippet from the daily view chart "factory" from the current tideline. First I make a new "pool" - a horizontal section of our daily view in tideline - then I set all these properties like the label and the legend and so forth. Then, before I do anything else, I have to arrange the pools and set up the annotation and tooltip layers. Now (but not *before* now), I can configure the annotations and tooltips. Instead of ordering a pizza, I'm doing something much closer to describing how to make it.
 
 The worst of this is the places where there is a strict sequencing of steps, because even as the primary author of the library, I don't always remember where those strict sequences *are*.
 
-What I need is a way to describe the configuration of a visualization entirely statically, and getter-setter methods don't quite cut it. Each setter is rooted in the (private, encapsulated) context of whatever state the visualization is in when the setter gets called, and thus it may or may not behave as expected when called out of the expected sequence.
+What I need instead is a way to describe the configuration of a visualization entirely statically, and getter-setter methods don't quite cut it. Each setter is a function that executes when I call it, and it's rooted in the (private, encapsulated) context of whatever state the visualization is in when I call it, and thus it may or may not behave as expected when called out of the sequence that the original developer had in mind.
 
 So the problem in short is: too much encapsulation, too much implicit state.
 
@@ -419,7 +445,7 @@ So the problem in short is: too much encapsulation, too much implicit state.
 <!-- .slide: data-background="images/dominoes.gif" -->
 
 Note:
-Since my problem is too much hidden state, the Flux pattern seems to be a natural fit, with its emphasis on global state managed by stores at the highest level of the application.
+Since my problem is too much hidden state, the Flux pattern seems to be a natural fit, with its emphasis on global state managed by stores at the highest level of the application and information trickling down from the top to the components that need it to render.
 
 
 ## let's talk about <!-- .element: class="photo-overlay-dark white-shadow" -->
@@ -429,13 +455,13 @@ Since my problem is too much hidden state, the Flux pattern seems to be a natura
 <a class="image-source white-link" target="_blank" href="https://www.flickr.com/photos/edebell/2318686613/in/faves-134718242@N08/">(image source)</a>
 
 Note:
-To illustrate how I see this working, let's talk about weather data since it's something you're all familiar with (unlike the diabetes data we deal with at Tidepool).
+To illustrate how I see this working, let's talk through it with weather data since it's something you're all familiar with (unlike the diabetes data we deal with at Tidepool).
 
 
 ![a weather app](images/weather.png)
 
 Note:
-Weather data is also fun because (a) there's a lot of it and (b) the interfaces and mechanisms for displaying it range from terrible to insanely great.
+Weather data is also a pretty good example, I think, because (a) there's a lot of it and (b) you've all probably seen many many interfaces for displaying it.
 
 
 ## datatypes
@@ -455,7 +481,7 @@ Weather data is also fun because (a) there's a lot of it and (b) the interfaces 
 
 Note:
 
-Here's a small list of some types of weather data: cloud condition; high, low, and "feels like" temperature; chance & type of precipitation; humidity; wind speed and direction. And that's ignoring some others like barometric pressure, windchill, et cetera.
+Here's a small list of common types in weather data: cloud condition; high, low, and "feels like" temperature; chance & type of precipitation; humidity; wind speed and direction. And that's ignoring some others like barometric pressure, windchill, et cetera.
 
 These are all possible candidates for display and visualization.
 
@@ -463,17 +489,41 @@ These are all possible candidates for display and visualization.
 ## view determinators
 
 - location
-- time (past, now, future)
-- user preference
 
 Note:
-But coming at it from another angle, we also have a bunch of different factors that may act as a filter influencing which datatypes are *actually* relevant for visualization or display in various contexts. When viewing weather data for Moab, for example, it might make sense to leave off humidity and precipitation information, or at least make it a less emphasized part of the display.
+But coming at it from another angle, we also have a bunch of different factors that may act as a filter influencing which datatypes are *actually* relevant for visualization or display in various contexts.
 
-When viewing past weather data, predicted high and low temperatures and predictions of precipitation are probably not as relevant as the actual high and low temps and precipitation. In a forecast view, on the other hand, the actual data obviously doesn't exist yet, and the predictions are highly relevant.
 
-User preference also comes into play. A new weather app I've been using lately has a preference to always display the "feels like" temperature instead of the raw temperature.
+<!-- .slide: data-background="images/moab.jpg" -->
 
-What I'm trying to get at is that putting together a set of visualizations of a singular domain of data - whether that's weather data or diabetes data - is basically a question of figuring out the right mapping between--
+<a class="image-source white-link" target="_blank" href="https://www.flickr.com/photos/kazzpoint0/8113544806/in/faves-134718242@N08/">(image source)</a>
+
+Note:
+When viewing weather data for Moab, for example, it might make sense to leave off humidity and precipitation information, or to at least make it a less emphasized part of the display.
+
+
+<!-- .slide: data-background="images/cottonwood-canyon.jpg" -->
+
+<a class="big-link" href="http://www.wasatchsnowforecast.com/" target="_blank">Wasatch Snow Forecast</a>
+
+<a class="image-source white-link" target="_blank" href="https://www.flickr.com/photos/stevedunleavy/16332030176/in/faves-134718242@N08/">(image source)</a>
+
+Note:
+Or if you're a skiier like me and you're interested in the weather for the Cottonwood Canyons, you have a different set of priorities for your weather display. And just in case you think this example is contrived, follow the link to the Wasatch Snow Forecast here.
+
+
+## view determinators
+
+- location
+- time (past, now, future)
+- user preference <!-- .element: class="fragment" -->
+
+Note:
+Time is another view determinator. When viewing past weather data, predicted high and low temperatures and predictions of precipitation are probably not as relevant as the actual high and low temps and precipitation. In a forecast view, on the other hand, the actual data obviously doesn't exist yet, and the predictions are highly relevant.
+
+User preference also comes into play. A new weather app I've been using lately has a preference to always display the "feels like" temperature instead of the raw temperature, for example.
+
+What I'm trying to get at is that putting together a set of visualizations of a singular domain of data - whether that's weather data or diabetes data - is basically a question of figuring out the right intersection of--
 
 
 # what you want <!-- .element: class="photo-overlay big white-shadow" -->
@@ -559,7 +609,7 @@ One of the main things the ConfigStore contains is references to the rendering m
 <!-- .slide: data-background="#9fc5e8" -->
 
 Note:
-So here's a simplified example of what the data in a ConfigStore might actually look like. There's an array of rendering modules, each with an ID, and indication of whether the module is enabled (this might be subject to user preference - think of it as turning layers on and off), a type of data that it visualizes, and a reference to the D3 module that actually does the rendering.
+So here's a simplified example of what the data in a ConfigStore might actually look like. There's an array of rendering modules, each with an ID, and indication of whether the module is enabled (this is also something that could be exposed to user preference - think of it as turning layers on and off), a type of data that it visualizes, and a reference to the D3 module that actually does the rendering.
 
 The ConfigStore also has some global user preferences - the units and timezone for display.
 
@@ -567,8 +617,8 @@ The ConfigStore also has some global user preferences - the units and timezone f
 ## DataStore has...
 
 - data
-- <small>(more)</small> data (pagination)
-- <small>(even more)</small> data (push)
+- more data (pagination) <!-- .element: class="fragment" -->
+- even more data (push) <!-- .element: class="fragment" -->
 
 <!-- .slide: data-background="#f4cccc" -->
 
@@ -595,7 +645,7 @@ As an example of one way to structure a DataStore, in what I've been experimenti
 ## **ephemeral** state
 
 - location along timeline
-- current data
+- current data (in view/buffer)
 - focused data
 
 <!-- .slide: data-background="#d9d2e9" -->
@@ -672,9 +722,29 @@ Finally, only the DrawStore responds the move location action, which is fired as
 <img src="images/basic-flow.svg" alt="diagram of basic flow between the three stores" title="basic flow diagram" style="border: none; box-shadow: none;" width="90%" />
 
 Note:
-And finally, here's a somewhat crude attempt at illustrating this in a diagram. I've put `INIT_CONFIGS` and `LOAD_DATA` on one side because both of these actions will be fired after the server responds to a request for data, and they may happen in either order. I've drawn a dotted line from the DrawStore to the ConfigStore and the DataStore to represent the fact that the DrawStore waits for each of these before responding to the same dispatches. The DrawStore is the source of the data used to actually render the visualization for the user. The user then interacts with it, navigating through the time dimension and causing `MOVE_LOCATION` actions to be fired as she goes. These are then dispatched straight to the DrawStore, which prepares the next state of the visualization for rendering.
+And finally, here's a somewhat crude attempt at illustrating this in a diagram. I've put `INIT_CONFIGS` and `LOAD_DATA` on one side because both of these actions will be fired after the server responds to a request for data, and they may happen in either order. I've drawn a dotted line from the DrawStore to `INIT_CONFIGS` and `LOAD_DATA` to represent the fact that the DrawStore also responds to these dispatches after waiting for the other stores to finish their responses. The DrawStore is the source of the data used to actually render the visualization for the user. The user then interacts with it, navigating through the time dimension and causing `MOVE_LOCATION` actions to be fired as she goes. These are then dispatched straight to the DrawStore, which prepares the next state of the visualization for rendering.
 
-Many other actions will be just like `MOVE_LOCATION`, with only the DrawStore reacting to the dispatch. But some - for example, changing the current configuration from the daily view to the trends view - the ConfigStore will respond to first, then again the DrawStore after waiting will pluck out the new enabled rendering modules and configuration information (like the fact that the default domain of display in the trends view is two weeks instead of 24 hours) and reshape the visualization state that is passed down into the components doing the rendering.
+
+<img src="images/basic-flow-focus.svg" alt="diagram of flow between the three stores: focus data" title="flow diagram: focus data" style="border: none; box-shadow: none;" width="90%" />
+
+Note:
+Many other actions will be just like `MOVE_LOCATION`, with only the DrawStore reacting to the dispatch. For example, the `FOCUS_DATA` action to create a tooltip.
+
+
+<img src="images/basic-flow-zoom.svg" alt="diagram of flow between the three stores: zoom" title="flow diagram: zoom" style="border: none; box-shadow: none;" width="90%" />
+
+Note:
+A `ZOOM` action to change the size of the time domain in view could be another one. This would be, for example, changing the normal 24 hours in view on tideline's "daily" view to six hours or three hours in order to zoom in around a particular event.
+
+
+<img src="images/less-basic-flow.svg" alt="less basic flow diagram" title="less basic flow diagram" style="border: none; box-shadow: none;" width="90%" />
+
+Note:
+But there might be a case where we want the same type of "zoom" action to propogate to the ConfigStore, with the DrawStore also reacting to the dispatch. This is the case where the user doesn't just want to temporarily zoom in to see something, but rather they want to change the default domain. Perhaps they like seeing only twelve hours at a time in the detailed "daily" view.
+
+With the three-store structure - and especially if the ConfigStore is responsible for both getting the user-specific parts of the configuration from the server *and* persisting any changes back to the server - then the distinction between a temporary "zoom" and a more permanent preference change is the difference between an action that only the DrawStore is listening for and reacting to and an action that both the ConfigStore and DrawStore are listening for and reacting to.
+
+And I will end on this optimistic note, exactly at the point where maybe I've convinced myself again that the three-store structure really is a good idea.
 
 
 
@@ -684,4 +754,4 @@ Many other actions will be just like `MOVE_LOCATION`, with only the DrawStore re
 <!-- .slide: data-background="images/lancets.jpg" -->
 
 Note:
-So this is what I've been working through. Again, please reach out if you want to continue the conversation. The side project where I've been working through these ideas in actual code is on my personal GitHub - that's the first link here, to medusa. The second link is just a link to where these slides are hosted on my website, in case you'd like to have it but missed the link at the beginning. Thank you!
+Again, please reach out if you want to continue the conversation. The side project where I've been working through these ideas in actual code will be on my personal GitHub very soon (hopefully this week) - that's the first link here, to medusa. The second link is just a link to where these slides are hosted on my website, in case you'd like to have it but missed the link at the beginning. Thank you!
