@@ -281,6 +281,8 @@ So here I have to pause and give a big hat tip to Nico Hery, a former colleague 
 (React dev encountering DOM manipulation in the wild)
 
 Note:
+This is a huge red flag for me.
+
 Even worse, the state of the visualization with respect to the user's interactions is completely hidden, encapsulated tightly within the D3 code and not exposed in a developer-friendly way (for testing, for design iteration, etc.)
 
 
@@ -453,7 +455,7 @@ Since my problem is too much hidden state, the Flux pattern seems to be a natura
 <a class="image-source white-link" target="_blank" href="https://www.flickr.com/photos/edebell/2318686613/in/faves-134718242@N08/">(image source)</a>
 
 Note:
-To illustrate how I see this working, let's talk about weather data since it's something you're all familiar with (unlike the diabetes data we deal with at Tidepool).
+To illustrate how I see this working, let's talk through it with weather data since it's something you're all familiar with (unlike the diabetes data we deal with at Tidepool).
 
 
 ![a weather app](images/weather.png)
@@ -720,7 +722,7 @@ Finally, only the DrawStore responds the move location action, which is fired as
 <img src="images/basic-flow.svg" alt="diagram of basic flow between the three stores" title="basic flow diagram" style="border: none; box-shadow: none;" width="90%" />
 
 Note:
-And finally, here's a somewhat crude attempt at illustrating this in a diagram. I've put `INIT_CONFIGS` and `LOAD_DATA` on one side because both of these actions will be fired after the server responds to a request for data, and they may happen in either order. I've drawn a dotted line from the DrawStore to the ConfigStore and the DataStore to represent the fact that the DrawStore waits for each of these before responding to the same dispatches. The DrawStore is the source of the data used to actually render the visualization for the user. The user then interacts with it, navigating through the time dimension and causing `MOVE_LOCATION` actions to be fired as she goes. These are then dispatched straight to the DrawStore, which prepares the next state of the visualization for rendering.
+And finally, here's a somewhat crude attempt at illustrating this in a diagram. I've put `INIT_CONFIGS` and `LOAD_DATA` on one side because both of these actions will be fired after the server responds to a request for data, and they may happen in either order. I've drawn a dotted line from the DrawStore to `INIT_CONFIGS` and `LOAD_DATA` to represent the fact that the DrawStore also responds to these dispatches after waiting for the other stores to finish their responses. The DrawStore is the source of the data used to actually render the visualization for the user. The user then interacts with it, navigating through the time dimension and causing `MOVE_LOCATION` actions to be fired as she goes. These are then dispatched straight to the DrawStore, which prepares the next state of the visualization for rendering.
 
 
 <img src="images/basic-flow-focus.svg" alt="diagram of flow between the three stores: focus data" title="flow diagram: focus data" style="border: none; box-shadow: none;" width="90%" />
